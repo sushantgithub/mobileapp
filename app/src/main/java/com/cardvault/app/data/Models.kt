@@ -12,11 +12,20 @@ data class CardRecord(
     val expiryYear: Int,
     val cvv: String,
     val brand: CardBrand = CardBrand.detect(number),
+    val kind: CardKind = CardKind.CREDIT,
+    val billGenerationDate: String = "",
+    val dueDate: String = "",
     val billingZip: String = "",
     val notes: String = "",
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
 )
+
+@Serializable
+enum class CardKind {
+    CREDIT,
+    DEBIT,
+}
 
 @Serializable
 enum class CardBrand {
@@ -69,6 +78,33 @@ data class EncryptedBackup(
     companion object {
         const val MAGIC = "CARDVAULT"
     }
+}
+
+object CardDates {
+    private val displayFormat = java.time.format.DateTimeFormatter.ofPattern(
+        "d MMM yyyy",
+        java.util.Locale.ENGLISH,
+    )
+
+    fun forKind(kind: CardKind, billGenerationDate: String, dueDate: String): Pair<String, String> {
+        if (kind == CardKind.DEBIT) return "" to ""
+        return normalize(billGenerationDate) to normalize(dueDate)
+    }
+
+    fun display(isoDate: String): String {
+        val value = normalize(isoDate)
+        if (value.isEmpty()) return ""
+        return java.time.LocalDate.parse(value).format(displayFormat)
+    }
+
+    fun fromEpochMilliUtc(epochMilli: Long): String {
+        return java.time.Instant.ofEpochMilli(epochMilli)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toLocalDate()
+            .toString()
+    }
+
+    private fun normalize(value: String): String = value.trim()
 }
 
 object CardSearch {

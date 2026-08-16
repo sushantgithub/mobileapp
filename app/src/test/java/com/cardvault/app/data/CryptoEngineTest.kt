@@ -91,3 +91,25 @@ class CardSearchTest {
         updatedAtEpochMs = 0,
     )
 }
+
+class CardDatesTest {
+    @Test
+    fun debitClearsDates() {
+        val (bill, due) = CardDates.forKind(CardKind.DEBIT, "2026-08-01", "2026-08-20")
+        assertEquals("", bill)
+        assertEquals("", due)
+    }
+
+    @Test
+    fun creditKeepsDates() {
+        val (bill, due) = CardDates.forKind(CardKind.CREDIT, " 2026-08-05 ", "2026-08-25")
+        assertEquals("2026-08-05", bill)
+        assertEquals("2026-08-25", due)
+    }
+
+    @Test
+    fun displaysHumanDate() {
+        assertEquals("5 Aug 2026", CardDates.display("2026-08-05"))
+        assertEquals("", CardDates.display(" "))
+    }
+}

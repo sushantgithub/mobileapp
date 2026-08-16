@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.cardvault.app.data.CardDates
+import com.cardvault.app.data.CardKind
 import com.cardvault.app.data.CardNumberFormatter
 import com.cardvault.app.data.CardRecord
 import com.cardvault.app.data.CardSearch
@@ -154,7 +156,10 @@ fun CardPreview(card: CardRecord, onClick: () -> Unit) {
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(card.nickname, style = MaterialTheme.typography.titleLarge, color = Ivory)
-            Text(card.brand.name, color = Gold)
+            Text(
+                if (card.kind == CardKind.CREDIT) "${card.brand.name} CREDIT" else "${card.brand.name} DEBIT",
+                color = Gold,
+            )
         }
         Spacer(Modifier.height(28.dp))
         Text(CardNumberFormatter.mask(card.number), style = MaterialTheme.typography.titleLarge)
@@ -162,6 +167,15 @@ fun CardPreview(card: CardRecord, onClick: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(card.cardholderName.ifBlank { " " })
             Text("%02d/%02d".format(card.expiryMonth, card.expiryYear % 100))
+        }
+        if (card.kind == CardKind.CREDIT && (card.billGenerationDate.isNotBlank() || card.dueDate.isNotBlank())) {
+            Spacer(Modifier.height(12.dp))
+            if (card.billGenerationDate.isNotBlank()) {
+                Text("Bill: ${CardDates.display(card.billGenerationDate)}")
+            }
+            if (card.dueDate.isNotBlank()) {
+                Text("Due: ${CardDates.display(card.dueDate)}")
+            }
         }
     }
 }

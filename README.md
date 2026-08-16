@@ -16,6 +16,13 @@ PIN-protected Android app for storing your own card details on-device.
 
 On the home list, use **Search by nickname**. Matching is case-insensitive and matches part of the name (for example `hdfc` finds `HDFC Millennia`).
 
+## Credit vs debit dates
+
+When you add a card, choose **Credit card** or **Debit card**.
+
+- Credit cards can store a **bill generation date** and a **due date**.
+- Debit cards leave those dates blank; switching to debit clears them.
+
 ## Phone change / sync
 
 1. Open **Settings**.

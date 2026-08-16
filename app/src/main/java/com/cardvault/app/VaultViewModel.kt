@@ -12,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.cardvault.app.data.CardBrand
+import com.cardvault.app.data.CardDates
+import com.cardvault.app.data.CardKind
 import com.cardvault.app.data.CardNumberFormatter
 import com.cardvault.app.data.CardRecord
 import com.cardvault.app.data.UnlockResult
@@ -153,6 +155,9 @@ class VaultViewModel(private val repository: VaultRepository) : ViewModel() {
         cvv: String,
         billingZip: String,
         notes: String,
+        kind: CardKind,
+        billGenerationDate: String,
+        dueDate: String,
     ): Boolean {
         val digits = CardNumberFormatter.digitsOnly(number)
         if (nickname.isBlank()) {
@@ -174,6 +179,7 @@ class VaultViewModel(private val repository: VaultRepository) : ViewModel() {
         val key = dek ?: return false
         val now = System.currentTimeMillis()
         val current = _state.value.cards
+        val (billDate, paymentDueDate) = CardDates.forKind(kind, billGenerationDate, dueDate)
         val record = CardRecord(
             id = existingId ?: UUID.randomUUID().toString(),
             nickname = nickname.trim(),
@@ -183,6 +189,9 @@ class VaultViewModel(private val repository: VaultRepository) : ViewModel() {
             expiryYear = expiryYear,
             cvv = cvv,
             brand = CardBrand.detect(digits),
+            kind = kind,
+            billGenerationDate = billDate,
+            dueDate = paymentDueDate,
             billingZip = billingZip.trim(),
             notes = notes.trim(),
             createdAtEpochMs = current.firstOrNull { it.id == existingId }?.createdAtEpochMs ?: now,

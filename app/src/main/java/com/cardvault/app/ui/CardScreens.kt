@@ -14,7 +14,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -23,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.cardvault.app.data.CardDates
+import com.cardvault.app.data.CardKind
 import com.cardvault.app.data.CardNumberFormatter
 import com.cardvault.app.data.CardRecord
 
@@ -48,6 +54,9 @@ fun CardEditorScreen(
         cvv: String,
         zip: String,
         notes: String,
+        kind: CardKind,
+        billGenerationDate: String,
+        dueDate: String,
     ) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -59,6 +68,11 @@ fun CardEditorScreen(
     var cvv by remember { mutableStateOf(existing?.cvv.orEmpty()) }
     var zip by remember { mutableStateOf(existing?.billingZip.orEmpty()) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
+    var kind by remember { mutableStateOf(existing?.kind ?: CardKind.CREDIT) }
+    var billGenerationDate by remember { mutableStateOf(existing?.billGenerationDate.orEmpty()) }
+    var dueDate by remember { mutableStateOf(existing?.dueDate.orEmpty()) }
+    var pickingBillDate by remember { mutableStateOf(false) }
+    var pickingDueDate by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -80,6 +94,23 @@ fun CardEditorScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Text("Card type")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = kind == CardKind.CREDIT,
+                    onClick = { kind = CardKind.CREDIT },
+                    label = { Text("Credit card") },
+                )
+                FilterChip(
+                    selected = kind == CardKind.DEBIT,
+                    onClick = {
+                        kind = CardKind.DEBIT
+                        billGenerationDate = ""
+                        dueDate = ""
+                    },
+                    label = { Text("Debit card") },
+                )
+            }
             OutlinedTextField(nickname, { nickname = it }, label = { Text("Nickname") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(name, { name = it }, label = { Text("Name on card") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
@@ -113,6 +144,20 @@ fun CardEditorScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
+            if (kind == CardKind.CREDIT) {
+                DateField(
+                    label = "Bill generation date",
+                    isoDate = billGenerationDate,
+                    onPick = { pickingBillDate = true },
+                    onClear = { billGenerationDate = "" },
+                )
+                DateField(
+                    label = "Due date",
+                    isoDate = dueDate,
+                    onPick = { pickingDueDate = true },
+                    onClear = { dueDate = "" },
+                )
+            }
             OutlinedTextField(zip, { zip = it }, label = { Text("Billing ZIP (optional)") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(notes, { notes = it }, label = { Text("Notes (optional)") }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
@@ -127,12 +172,84 @@ fun CardEditorScreen(
                         cvv,
                         zip,
                         notes,
+                        kind,
+                        billGenerationDate,
+                        dueDate,
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Save securely") }
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
         }
+    }
+
+    if (pickingBillDate) {
+        VaultDatePickerDialog(
+            onDismiss = { pickingBillDate = false },
+            onConfirm = { millis ->
+                billGenerationDate = CardDates.fromEpochMilliUtc(millis)
+                pickingBillDate = false
+            },
+        )
+    }
+    if (pickingDueDate) {
+        VaultDatePickerDialog(
+            onDismiss = { pickingDueDate = false },
+            onConfirm = { millis ->
+                dueDate = CardDates.fromEpochMilliUtc(millis)
+                pickingDueDate = false
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateField(
+    label: String,
+    isoDate: String,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
+    OutlinedTextField(
+        value = CardDates.display(isoDate),
+        onValueChange = {},
+        readOnly = true,
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+        trailingIcon = {
+            Row {
+                if (isoDate.isNotBlank()) {
+                    TextButton(onClick = onClear) { Text("Clear") }
+                }
+                TextButton(onClick = onPick) { Text("Pick") }
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VaultDatePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit,
+) {
+    val state = rememberDatePickerState()
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val millis = state.selectedDateMillis ?: return@TextButton
+                    onConfirm(millis)
+                },
+            ) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    ) {
+        DatePicker(state = state)
     }
 }
 
@@ -168,6 +285,7 @@ fun CardDetailScreen(
         ) {
             CardPreview(card = card, onClick = {})
             Spacer(Modifier.height(8.dp))
+            Text("Type: ${if (card.kind == CardKind.CREDIT) "Credit card" else "Debit card"}")
             Text("Name on card: ${card.cardholderName.ifBlank { "—" }}")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -186,6 +304,10 @@ fun CardDetailScreen(
                     Text(if (revealCvv) "Hide" else "Reveal")
                 }
                 TextButton(onClick = { onCopy("CVV", card.cvv) }) { Text("Copy") }
+            }
+            if (card.kind == CardKind.CREDIT) {
+                Text("Bill generation: ${CardDates.display(card.billGenerationDate).ifBlank { "—" }}")
+                Text("Due date: ${CardDates.display(card.dueDate).ifBlank { "—" }}")
             }
             if (card.billingZip.isNotBlank()) Text("ZIP: ${card.billingZip}")
             if (card.notes.isNotBlank()) Text("Notes: ${card.notes}")

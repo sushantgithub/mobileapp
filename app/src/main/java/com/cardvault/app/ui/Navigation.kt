@@ -74,8 +74,8 @@ fun CardVaultNav(viewModel: VaultViewModel) {
             composable("edit") {
                 CardEditorScreen(
                     existing = null,
-                    onSave = { nickname, name, number, month, year, cvv, zip, notes ->
-                        if (viewModel.upsertCard(null, nickname, name, number, month, year, cvv, zip, notes)) {
+                    onSave = { nickname, name, number, month, year, cvv, zip, notes, kind, billDate, dueDate ->
+                        if (viewModel.upsertCard(null, nickname, name, number, month, year, cvv, zip, notes, kind, billDate, dueDate)) {
                             navController.popBackStack()
                         }
                     },
@@ -90,8 +90,8 @@ fun CardVaultNav(viewModel: VaultViewModel) {
                 val card = state.cards.firstOrNull { it.id == id }
                 CardEditorScreen(
                     existing = card,
-                    onSave = { nickname, name, number, month, year, cvv, zip, notes ->
-                        if (viewModel.upsertCard(id, nickname, name, number, month, year, cvv, zip, notes)) {
+                    onSave = { nickname, name, number, month, year, cvv, zip, notes, kind, billDate, dueDate ->
+                        if (viewModel.upsertCard(id, nickname, name, number, month, year, cvv, zip, notes, kind, billDate, dueDate)) {
                             navController.popBackStack()
                         }
                     },
