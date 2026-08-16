@@ -1,4 +1,18 @@
-# Card Vault
+# Mobile apps
+
+This repo has two Android apps.
+
+## DueDay
+
+A monthly bill reminder app. For each bill you can set a **bill generation day** and a **due day** (for example the 6th and the 20th). DueDay notifies you **5 days before** and **on each of those days**. Store names and optional amounts only — not card numbers.
+
+Sideload APK: [dist/DueDay-1.0.0.apk](dist/DueDay-1.0.0.apk)
+
+Allow notifications when Android asks. Add items like “HDFC Millennia”, day 6, optional amount.
+
+Build: `./gradlew :dueday:assembleRelease`
+
+## Card Vault
 
 PIN-protected Android app for storing your own card details on-device.
 

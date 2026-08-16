@@ -1,0 +1,3 @@
+-keep class com.dueday.app.data.** { *; }
+-dontwarn javax.annotation.**
+-dontwarn javax.annotation.concurrent.**

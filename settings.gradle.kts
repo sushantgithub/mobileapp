@@ -14,5 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CardVault"
+rootProject.name = "MobileApps"
 include(":app")
+include(":dueday")
