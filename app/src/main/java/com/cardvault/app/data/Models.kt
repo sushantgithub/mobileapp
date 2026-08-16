@@ -81,30 +81,45 @@ data class EncryptedBackup(
 }
 
 object CardDates {
-    private val displayFormat = java.time.format.DateTimeFormatter.ofPattern(
-        "d MMM yyyy",
-        java.util.Locale.ENGLISH,
-    )
-
     fun forKind(kind: CardKind, billGenerationDate: String, dueDate: String): Pair<String, String> {
         if (kind == CardKind.DEBIT) return "" to ""
-        return normalize(billGenerationDate) to normalize(dueDate)
+        return canonical(billGenerationDate) to canonical(dueDate)
     }
 
-    fun display(isoDate: String): String {
-        val value = normalize(isoDate)
-        if (value.isEmpty()) return ""
-        return java.time.LocalDate.parse(value).format(displayFormat)
+    fun canonical(value: String): String {
+        val day = parseDay(value) ?: return ""
+        return day.toString()
     }
 
-    fun fromEpochMilliUtc(epochMilli: Long): String {
-        return java.time.Instant.ofEpochMilli(epochMilli)
-            .atZone(java.time.ZoneOffset.UTC)
-            .toLocalDate()
-            .toString()
+    fun parseDay(value: String): Int? {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return null
+        if (ISO_DATE.matches(trimmed)) {
+            val day = trimmed.substring(8, 10).toIntOrNull() ?: return null
+            return day.takeIf { it in 1..31 }
+        }
+        val digits = trimmed.filter { it.isDigit() }
+        if (digits.isEmpty()) return null
+        return digits.toIntOrNull()?.takeIf { it in 1..31 }
     }
 
-    private fun normalize(value: String): String = value.trim()
+    fun display(value: String): String {
+        val day = parseDay(value) ?: return ""
+        return "${ordinal(day)} of every month"
+    }
+
+    fun ordinal(day: Int): String {
+        val suffix = when {
+            day % 100 in 11..13 -> "th"
+            day % 10 == 1 -> "st"
+            day % 10 == 2 -> "nd"
+            day % 10 == 3 -> "rd"
+            else -> "th"
+        }
+        return "$day$suffix"
+    }
+
+    private val ISO_DATE = Regex("""\d{4}-\d{2}-\d{2}""")
 }
 
 object CardSearch {

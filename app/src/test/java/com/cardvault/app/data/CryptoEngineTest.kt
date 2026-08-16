@@ -95,21 +95,29 @@ class CardSearchTest {
 class CardDatesTest {
     @Test
     fun debitClearsDates() {
-        val (bill, due) = CardDates.forKind(CardKind.DEBIT, "2026-08-01", "2026-08-20")
+        val (bill, due) = CardDates.forKind(CardKind.DEBIT, "6", "20")
         assertEquals("", bill)
         assertEquals("", due)
     }
 
     @Test
-    fun creditKeepsDates() {
-        val (bill, due) = CardDates.forKind(CardKind.CREDIT, " 2026-08-05 ", "2026-08-25")
-        assertEquals("2026-08-05", bill)
-        assertEquals("2026-08-25", due)
+    fun creditKeepsDayOfMonth() {
+        val (bill, due) = CardDates.forKind(CardKind.CREDIT, " 6 ", "20")
+        assertEquals("6", bill)
+        assertEquals("20", due)
     }
 
     @Test
-    fun displaysHumanDate() {
-        assertEquals("5 Aug 2026", CardDates.display("2026-08-05"))
+    fun migratesIsoDateToDay() {
+        assertEquals("6", CardDates.canonical("2026-08-06"))
+        assertEquals("5", CardDates.parseDay("5th")?.toString())
+    }
+
+    @Test
+    fun displaysEveryMonth() {
+        assertEquals("6th of every month", CardDates.display("6"))
+        assertEquals("1st of every month", CardDates.display("1"))
+        assertEquals("23rd of every month", CardDates.display("23"))
         assertEquals("", CardDates.display(" "))
     }
 }

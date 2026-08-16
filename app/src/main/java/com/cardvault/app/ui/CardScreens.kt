@@ -14,9 +14,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,10 +69,8 @@ fun CardEditorScreen(
     var zip by remember { mutableStateOf(existing?.billingZip.orEmpty()) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var kind by remember { mutableStateOf(existing?.kind ?: CardKind.CREDIT) }
-    var billGenerationDate by remember { mutableStateOf(existing?.billGenerationDate.orEmpty()) }
-    var dueDate by remember { mutableStateOf(existing?.dueDate.orEmpty()) }
-    var pickingBillDate by remember { mutableStateOf(false) }
-    var pickingDueDate by remember { mutableStateOf(false) }
+    var billGenerationDate by remember { mutableStateOf(CardDates.canonical(existing?.billGenerationDate.orEmpty())) }
+    var dueDate by remember { mutableStateOf(CardDates.canonical(existing?.dueDate.orEmpty())) }
 
     Scaffold(
         topBar = {
@@ -145,17 +143,15 @@ fun CardEditorScreen(
                 )
             }
             if (kind == CardKind.CREDIT) {
-                DateField(
-                    label = "Bill generation date",
-                    isoDate = billGenerationDate,
-                    onPick = { pickingBillDate = true },
-                    onClear = { billGenerationDate = "" },
+                DayOfMonthField(
+                    label = "Bill generation day",
+                    dayValue = billGenerationDate,
+                    onDayChange = { billGenerationDate = it },
                 )
-                DateField(
-                    label = "Due date",
-                    isoDate = dueDate,
-                    onPick = { pickingDueDate = true },
-                    onClear = { dueDate = "" },
+                DayOfMonthField(
+                    label = "Due day",
+                    dayValue = dueDate,
+                    onDayChange = { dueDate = it },
                 )
             }
             OutlinedTextField(zip, { zip = it }, label = { Text("Billing ZIP (optional)") }, modifier = Modifier.fillMaxWidth())
@@ -182,74 +178,45 @@ fun CardEditorScreen(
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
         }
     }
-
-    if (pickingBillDate) {
-        VaultDatePickerDialog(
-            onDismiss = { pickingBillDate = false },
-            onConfirm = { millis ->
-                billGenerationDate = CardDates.fromEpochMilliUtc(millis)
-                pickingBillDate = false
-            },
-        )
-    }
-    if (pickingDueDate) {
-        VaultDatePickerDialog(
-            onDismiss = { pickingDueDate = false },
-            onConfirm = { millis ->
-                dueDate = CardDates.fromEpochMilliUtc(millis)
-                pickingDueDate = false
-            },
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateField(
+private fun DayOfMonthField(
     label: String,
-    isoDate: String,
-    onPick: () -> Unit,
-    onClear: () -> Unit,
+    dayValue: String,
+    onDayChange: (String) -> Unit,
 ) {
-    OutlinedTextField(
-        value = CardDates.display(isoDate),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        trailingIcon = {
-            Row {
-                if (isoDate.isNotBlank()) {
-                    TextButton(onClick = onClear) { Text("Clear") }
-                }
-                TextButton(onClick = onPick) { Text("Pick") }
-            }
-        },
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun VaultDatePickerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Long) -> Unit,
-) {
-    val state = rememberDatePickerState()
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = CardDates.display(dayValue).ifBlank { "Not set" },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Not set") },
                 onClick = {
-                    val millis = state.selectedDateMillis ?: return@TextButton
-                    onConfirm(millis)
+                    onDayChange("")
+                    expanded = false
                 },
-            ) { Text("OK") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    ) {
-        DatePicker(state = state)
+            )
+            (1..31).forEach { day ->
+                DropdownMenuItem(
+                    text = { Text(CardDates.display(day.toString())) },
+                    onClick = {
+                        onDayChange(day.toString())
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

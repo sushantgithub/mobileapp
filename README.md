@@ -20,8 +20,8 @@ On the home list, use **Search by nickname**. Matching is case-insensitive and m
 
 When you add a card, choose **Credit card** or **Debit card**.
 
-- Credit cards can store a **bill generation date** and a **due date**.
-- Debit cards leave those dates blank; switching to debit clears them.
+- Credit cards store a **bill generation day** and **due day** of the month (for example the 6th of every month), not a one-off calendar date.
+- Debit cards leave those days blank; switching to debit clears them.
 
 ## Phone change / sync
 
