@@ -5,6 +5,7 @@
 .DS_Store
 /build/
 /app/build/
+/dueday/build/
 /captures/
 *.apk
 *.ap_

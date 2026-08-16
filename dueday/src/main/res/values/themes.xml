@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.DueDay" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF10241C</item>
+        <item name="android:navigationBarColor">#FF10241C</item>
+        <item name="android:windowBackground">#FF10241C</item>
+    </style>
+</resources>
