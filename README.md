@@ -12,6 +12,10 @@ PIN-protected Android app for storing your own card details on-device.
 - Copied card numbers/CVVs are cleared from the clipboard after 30 seconds.
 - The vault auto-locks about 45 seconds after the app goes to the background.
 
+## Search
+
+On the home list, use **Search by nickname**. Matching is case-insensitive and matches part of the name (for example `hdfc` finds `HDFC Millennia`).
+
 ## Phone change / sync
 
 1. Open **Settings**.

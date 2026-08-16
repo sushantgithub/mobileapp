@@ -17,18 +17,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.cardvault.app.data.CardNumberFormatter
 import com.cardvault.app.data.CardRecord
+import com.cardvault.app.data.CardSearch
 import com.cardvault.app.ui.theme.Gold
 import com.cardvault.app.ui.theme.Ivory
 import com.cardvault.app.ui.theme.Navy
@@ -50,6 +58,9 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onLock: () -> Unit,
 ) {
+    var nicknameQuery by rememberSaveable { mutableStateOf("") }
+    val visibleCards = CardSearch.byNickname(cards, nicknameQuery)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,25 +78,60 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        if (cards.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("No cards yet. Tap + to add one.")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            if (cards.isNotEmpty()) {
+                OutlinedTextField(
+                    value = nicknameQuery,
+                    onValueChange = { nicknameQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true,
+                    label = { Text("Search by nickname") },
+                    placeholder = { Text("e.g. HDFC, Amazon") },
+                    leadingIcon = {
+                        Icon(Icons.Outlined.Search, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (nicknameQuery.isNotEmpty()) {
+                            IconButton(onClick = { nicknameQuery = "" }) {
+                                Icon(Icons.Outlined.Close, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(cards, key = { it.id }) { card ->
-                    CardPreview(card = card, onClick = { onOpen(card.id) })
+            when {
+                cards.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("No cards yet. Tap + to add one.")
+                    }
+                }
+                visibleCards.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("No cards match “${nicknameQuery.trim()}”.")
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(visibleCards, key = { it.id }) { card ->
+                            CardPreview(card = card, onClick = { onOpen(card.id) })
+                        }
+                    }
                 }
             }
         }

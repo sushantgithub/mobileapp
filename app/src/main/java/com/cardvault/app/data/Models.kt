@@ -71,6 +71,14 @@ data class EncryptedBackup(
     }
 }
 
+object CardSearch {
+    fun byNickname(cards: List<CardRecord>, query: String): List<CardRecord> {
+        val needle = query.trim()
+        if (needle.isEmpty()) return cards
+        return cards.filter { it.nickname.contains(needle, ignoreCase = true) }
+    }
+}
+
 object CardNumberFormatter {
     fun digitsOnly(value: String): String = value.filter { it.isDigit() }
 

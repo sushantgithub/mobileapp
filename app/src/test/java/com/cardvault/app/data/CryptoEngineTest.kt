@@ -53,3 +53,41 @@ class CardNumberFormatterTest {
         assertEquals("•••• •••• •••• 1111", CardNumberFormatter.mask("4111111111111111"))
     }
 }
+
+class CardSearchTest {
+    private val hdfc = sample("1", "HDFC Millennia")
+    private val amazon = sample("2", "Amazon Pay ICICI")
+    private val sbi = sample("3", "SBI SimplyCLICK")
+
+    @Test
+    fun emptyQueryReturnsAll() {
+        assertEquals(listOf(hdfc, amazon, sbi), CardSearch.byNickname(listOf(hdfc, amazon, sbi), "  "))
+    }
+
+    @Test
+    fun matchesNicknameIgnoringCase() {
+        assertEquals(listOf(amazon), CardSearch.byNickname(listOf(hdfc, amazon, sbi), "amazon"))
+    }
+
+    @Test
+    fun matchesPartialNickname() {
+        assertEquals(listOf(hdfc), CardSearch.byNickname(listOf(hdfc, amazon, sbi), "Mill"))
+    }
+
+    @Test
+    fun noMatchReturnsEmpty() {
+        assertTrue(CardSearch.byNickname(listOf(hdfc, amazon), "axis").isEmpty())
+    }
+
+    private fun sample(id: String, nickname: String) = CardRecord(
+        id = id,
+        nickname = nickname,
+        cardholderName = "Test",
+        number = "4111111111111111",
+        expiryMonth = 12,
+        expiryYear = 2030,
+        cvv = "123",
+        createdAtEpochMs = 0,
+        updatedAtEpochMs = 0,
+    )
+}
