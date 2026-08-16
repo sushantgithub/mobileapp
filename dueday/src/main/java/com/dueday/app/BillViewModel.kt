@@ -22,14 +22,17 @@ class BillViewModel(private val repository: BillRepository) : ViewModel() {
     val state: StateFlow<BillUiState> = _state
 
     init {
-        _state.update { it.copy(bills = repository.load().sortedBy { bill -> bill.dayOfMonth }) }
+        _state.update {
+            it.copy(bills = repository.load().sortedBy { bill -> bill.generationDay().takeIf { day -> day > 0 } ?: bill.paymentDueDay() })
+        }
     }
 
     fun upsert(
         id: String?,
         title: String,
         amount: String,
-        dayOfMonth: Int,
+        billGenerationDay: Int,
+        dueDay: Int,
         notes: String,
         notify: Boolean,
     ): Boolean {
@@ -37,15 +40,25 @@ class BillViewModel(private val repository: BillRepository) : ViewModel() {
             _state.update { it.copy(message = "Give this bill a name") }
             return false
         }
-        if (dayOfMonth !in 1..31) {
-            _state.update { it.copy(message = "Pick a day of the month from 1 to 31") }
+        if (billGenerationDay !in 1..31 && dueDay !in 1..31) {
+            _state.update { it.copy(message = "Pick a bill generation day or a due day") }
+            return false
+        }
+        if (billGenerationDay != 0 && billGenerationDay !in 1..31) {
+            _state.update { it.copy(message = "Bill generation day must be 1–31") }
+            return false
+        }
+        if (dueDay != 0 && dueDay !in 1..31) {
+            _state.update { it.copy(message = "Due day must be 1–31") }
             return false
         }
         val record = Bill(
             id = id ?: UUID.randomUUID().toString(),
             title = title.trim(),
             amount = amount.trim(),
-            dayOfMonth = dayOfMonth,
+            dayOfMonth = dueDay,
+            billGenerationDay = billGenerationDay,
+            dueDay = dueDay,
             notes = notes.trim(),
             notify = notify,
         )
@@ -65,7 +78,14 @@ class BillViewModel(private val repository: BillRepository) : ViewModel() {
     private fun persist(bills: List<Bill>) {
         viewModelScope.launch {
             repository.save(bills)
-            _state.update { it.copy(bills = bills.sortedBy { bill -> bill.dayOfMonth }, message = null) }
+            _state.update {
+                it.copy(
+                    bills = bills.sortedBy { bill ->
+                        bill.generationDay().takeIf { day -> day > 0 } ?: bill.paymentDueDay()
+                    },
+                    message = null,
+                )
+            }
         }
     }
 

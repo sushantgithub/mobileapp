@@ -86,8 +86,8 @@ fun DueDayApp(viewModel: BillViewModel) {
             composable("edit") {
                 EditorScreen(
                     existing = null,
-                    onSave = { title, amount, day, notes, notify ->
-                        if (viewModel.upsert(null, title, amount, day, notes, notify)) nav.popBackStack()
+                    onSave = { title, amount, billDay, dueDay, notes, notify ->
+                        if (viewModel.upsert(null, title, amount, billDay, dueDay, notes, notify)) nav.popBackStack()
                     },
                     onCancel = { nav.popBackStack() },
                     onDelete = null,
@@ -101,8 +101,8 @@ fun DueDayApp(viewModel: BillViewModel) {
                 val bill = state.bills.firstOrNull { it.id == id }
                 EditorScreen(
                     existing = bill,
-                    onSave = { title, amount, day, notes, notify ->
-                        if (viewModel.upsert(id, title, amount, day, notes, notify)) nav.popBackStack()
+                    onSave = { title, amount, billDay, dueDay, notes, notify ->
+                        if (viewModel.upsert(id, title, amount, billDay, dueDay, notes, notify)) nav.popBackStack()
                     },
                     onCancel = { nav.popBackStack() },
                     onDelete = {
@@ -132,7 +132,7 @@ private fun HomeScreen(
     ) { padding ->
         if (bills.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Add rent, cards, or any monthly bill.\nYou’ll get a reminder 5 days before and on the day.")
+                Text("Add rent, cards, or any monthly bill.\nSet bill generation day and due day.\nYou’ll get reminders 5 days before and on each day.")
             }
         } else {
             LazyColumn(
@@ -141,12 +141,23 @@ private fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(bills, key = { it.id }) { bill ->
-                    val next = BillReminders.nextBillDate(LocalDate.now(), bill.dayOfMonth)
+                    val nextBill = BillReminders.nextDate(LocalDate.now(), bill.generationDay())
+                    val nextDue = BillReminders.nextDate(LocalDate.now(), bill.paymentDueDay())
                     Card(Modifier.fillMaxWidth().clickable { onOpen(bill.id) }) {
                         Column(Modifier.padding(16.dp)) {
                             Text(bill.title, style = MaterialTheme.typography.titleLarge)
-                            Text("${ordinal(bill.dayOfMonth)} of every month")
-                            Text("Next: ${next.format(DateTimeFormatter.ofPattern("d MMM yyyy"))}")
+                            if (bill.generationDay() in 1..31) {
+                                Text("Bill generation: ${ordinal(bill.generationDay())} of every month")
+                                if (nextBill != null) {
+                                    Text("Next bill: ${nextBill.format(DateTimeFormatter.ofPattern("d MMM yyyy"))}")
+                                }
+                            }
+                            if (bill.paymentDueDay() in 1..31) {
+                                Text("Due: ${ordinal(bill.paymentDueDay())} of every month")
+                                if (nextDue != null) {
+                                    Text("Next due: ${nextDue.format(DateTimeFormatter.ofPattern("d MMM yyyy"))}")
+                                }
+                            }
                             if (bill.amount.isNotBlank()) Text("Amount: ${bill.amount}")
                             if (!bill.notify) Text("Reminders off")
                         }
@@ -161,16 +172,16 @@ private fun HomeScreen(
 @Composable
 private fun EditorScreen(
     existing: Bill?,
-    onSave: (String, String, Int, String, Boolean) -> Unit,
+    onSave: (String, String, Int, Int, String, Boolean) -> Unit,
     onCancel: () -> Unit,
     onDelete: (() -> Unit)?,
 ) {
     var title by remember { mutableStateOf(existing?.title.orEmpty()) }
     var amount by remember { mutableStateOf(existing?.amount.orEmpty()) }
-    var day by remember { mutableIntStateOf(existing?.dayOfMonth ?: 6) }
+    var billDay by remember { mutableIntStateOf(existing?.generationDay() ?: 0) }
+    var dueDay by remember { mutableIntStateOf(existing?.paymentDueDay() ?: 0) }
     var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var notify by remember { mutableStateOf(existing?.notify ?: true) }
-    var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -200,39 +211,58 @@ private fun EditorScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )
-            ExposedDropdownMenuBox(expanded, { expanded = it }) {
-                OutlinedTextField(
-                    value = "${ordinal(day)} of every month",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Day of month") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                )
-                ExposedDropdownMenu(expanded, { expanded = false }) {
-                    (1..31).forEach { value ->
-                        DropdownMenuItem(
-                            text = { Text(ordinal(value)) },
-                            onClick = {
-                                day = value
-                                expanded = false
-                            },
-                        )
-                    }
-                }
-            }
+            DayOfMonthField("Bill generation day", billDay) { billDay = it }
+            DayOfMonthField("Due day", dueDay) { dueDay = it }
             OutlinedTextField(notes, { notes = it }, label = { Text("Notes (optional)") }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Remind 5 days before and on the day", modifier = Modifier.weight(1f))
+                Text("Remind 5 days before and on each day", modifier = Modifier.weight(1f))
                 Switch(checked = notify, onCheckedChange = { notify = it })
             }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = { onSave(title, amount, day, notes, notify) }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { onSave(title, amount, billDay, dueDay, notes, notify) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Save")
             }
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
             if (onDelete != null) {
                 OutlinedButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) { Text("Delete") }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayOfMonthField(
+    label: String,
+    day: Int,
+    onDayChange: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded, { expanded = it }) {
+        OutlinedTextField(
+            value = if (day in 1..31) "${ordinal(day)} of every month" else "Not set",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded, { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Not set") },
+                onClick = {
+                    onDayChange(0)
+                    expanded = false
+                },
+            )
+            (1..31).forEach { value ->
+                DropdownMenuItem(
+                    text = { Text("${ordinal(value)} of every month") },
+                    onClick = {
+                        onDayChange(value)
+                        expanded = false
+                    },
+                )
             }
         }
     }

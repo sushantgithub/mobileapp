@@ -33,14 +33,18 @@ class BillReminderWorker(
         val today = LocalDate.now()
         val todayKey = today.toString()
         repo.load().filter { it.notify }.forEach { bill ->
-            BillReminders.kindsFor(today, bill.dayOfMonth).forEach { kind ->
-                val stamp = "${bill.id}:${kind}:$todayKey"
+            BillReminders.eventsFor(today, bill).forEach { event ->
+                val stamp = "${bill.id}:${event.kind}:$todayKey"
                 if (prefs.getBoolean(stamp, false)) return@forEach
-                val (title, text) = when (kind) {
-                    ReminderKind.FIVE_DAYS_BEFORE ->
-                        "Bill in 5 days" to "${bill.title} generates on the ${ordinal(bill.dayOfMonth)}."
-                    ReminderKind.ON_BILL_DAY ->
+                val (title, text) = when (event.kind) {
+                    ReminderKind.FIVE_DAYS_BEFORE_BILL ->
+                        "Bill in 5 days" to "${bill.title} generates on the ${ordinal(event.dayOfMonth)}."
+                    ReminderKind.ON_BILL_GENERATION ->
                         "Bill generates today" to "${bill.title} statement day is today."
+                    ReminderKind.FIVE_DAYS_BEFORE_DUE ->
+                        "Due in 5 days" to "${bill.title} is due on the ${ordinal(event.dayOfMonth)}."
+                    ReminderKind.ON_DUE_DAY ->
+                        "Payment due today" to "${bill.title} due date is today."
                 }
                 val extra = if (bill.amount.isNotBlank()) " Amount: ${bill.amount}." else ""
                 show(applicationContext, stamp.hashCode(), title, text + extra)
